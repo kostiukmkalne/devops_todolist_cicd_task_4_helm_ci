@@ -1,16 +1,16 @@
 name: python-deployment
 
-run-name: ${{ github.actor }} - ${{ github.ref_name }} - ${{ github.sha }}
+run-name: ${{ github.actor }} - ${{ github.ref_name}} -${{ github.sha }}
 
 on:
   push:
-    branches: ["your_name"]
+    branches: ["mk"]
   pull_request:
-    branches: ["your_name"]
+    branches: ["mk"]
 
 env:
   PythonVersion: 3.8
-  DockerImageName: your-dockerhub-username/todoapp
+  DockerImageName: todoapp
 
 jobs:
   python-ci:
@@ -56,17 +56,14 @@ jobs:
           name: python-artifacts
           path: .
 
-      - name: Upload helm artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: helm-artifacts
-          path: ${{ github.workspace }}/helm-charts
-
   docker-ci:
     runs-on: ubuntu-latest
-    if: ${{ github.ref_name == 'mk' }}
+    if: ${{ github.ref_name == 'your_name' }}
     needs: python-ci
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Download python artifacts
         uses: actions/download-artifact@v4
         with:
@@ -84,35 +81,29 @@ jobs:
         with:
           push: true
           context: ./src
-          tags: ${{ env.DockerImageName }}:${{ github.sha }}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.DockerImageName }}:${{ github.sha }}
 
   helm-ci:
     runs-on: ubuntu-latest
-    if: ${{ github.ref_name == 'mk' }}
+    if: ${{ github.ref_name == 'your_name' }}
     needs: python-ci
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Download helm artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: helm-artifacts
-          path: ./helm-charts
 
       - name: Set Up Helm
         uses: azure/setup-helm@v4.2.0
 
-      - name: Lint Helm Chart
+      - name: Lint Helm
         run: helm lint ./helm-charts/todoapp/
 
-      - name: Template Helm Chart
-        run: helm template kube2py ./helm-charts/todoapp/ -f ./helm-charts/todoapp/values.yaml
+      - name: Template Helm
+        run: helm template ./helm-charts/todoapp/ -f ./helm-charts/todoapp/values.yaml
 
-      - name: Package Helm Chart
+      - name: Package Helm
         run: helm package ./helm-charts/todoapp/
 
-      - name: Upload Helm Package
+      - name: Upload Helm Artifact
         uses: actions/upload-artifact@v4
         with:
           name: helm-package
